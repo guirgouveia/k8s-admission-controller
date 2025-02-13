@@ -1,0 +1,28 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-issuer
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: admission-webhook-cert
+  namespace: default
+spec:
+  secretName: webhook-tls
+  duration: 8760h # 1 year
+  renewBefore: 720h # 30 days
+  subject:
+    organizations:
+      - Your organization
+  commonName: mutating-replicant.default.svc  # Changed to match service name
+  dnsNames:
+    - mutating-replicant
+    - mutating-replicant.default
+    - mutating-replicant.default.svc
+    - mutating-replicant.default.svc.cluster.local  # All names match the service
+  issuerRef:
+    name: selfsigned-issuer
+    kind: ClusterIssuer

@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: mutating-replicant
+  name: mutating-replicant 
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mutating-replicant
+  template:
+    metadata:
+      labels:
+        app: mutating-replicant
+    spec:
+      containers:
+        - image: jumads/admission-controller:v2
+          name: mutating-replicant 
+          imagePullPolicy: Always
+          args:
+            - --port=8443
+            - --tls-crt=/certs/tls.crt
+            - --tls-key=/certs/tls.key
+          ports:
+            - containerPort: 8443
+              name: webhook
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /certs
+              name: certs
+          resources:
+            requests:
+              cpu: "100m"    # 0.1 CPU core
+              memory: "64Mi" # 64 MB memory
+            limits:
+              cpu: "500m"    # 0.5 CPU core
+              memory: "128Mi" # 128 MB memory
+      volumes:
+        - name: certs
+          secret:
+            secretName: webhook-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mutating-replicant 
+  namespace: default
+spec:
+  selector:
+    app: mutating-replicant 
+  type: ClusterIP
+  ports:
+  - name: mutating-replicant 
+    protocol: TCP
+    port: 443
+    targetPort: 8443

@@ -1,0 +1,23 @@
+kind: MutatingWebhookConfiguration
+apiVersion: admissionregistration.k8s.io/v1
+metadata:
+  name: mutate-replicas
+  annotations:
+    cert-manager.io/inject-ca-from: default/admission-webhook-cert
+webhooks:
+  - name: mutating-replicant.default.svc
+    clientConfig:
+      service:
+        namespace: default
+        name: mutating-replicant
+        path: /mutate
+    rules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["pods"]
+        scope: Namespaced
+    sideEffects: None
+    admissionReviewVersions:
+      - "v1"
+    failurePolicy: Fail
