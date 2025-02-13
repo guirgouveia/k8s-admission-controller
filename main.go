@@ -213,13 +213,25 @@ func handleMutation(w http.ResponseWriter, r *http.Request) {
 	})
 
 	// Create JSON patch for labels
-	patch := fmt.Sprintf(`[
-		{"op":"add","path":"/metadata/labels","value":{}},
-		{"op":"add","path":"/metadata/labels/environment","value":"production"},
-		{"op":"add","path":"/metadata/labels/owningResource","value":"%s"},
-		{"op":"add","path":"/metadata/labels/ipAddress","value":"%s"},
-		{"op":"add","path":"/metadata/labels/nodeName","value":"%s"}
-	]`, owningResource, ipAddress, nodeName)
+	var patch string
+	if pod.Labels == nil {
+		// If no labels exist, create the labels map first
+		patch = fmt.Sprintf(`[
+			{"op":"add","path":"/metadata/labels","value":{}},
+			{"op":"add","path":"/metadata/labels/environment","value":"production"},
+			{"op":"add","path":"/metadata/labels/owningResource","value":"%s"},
+			{"op":"add","path":"/metadata/labels/ipAddress","value":"%s"},
+			{"op":"add","path":"/metadata/labels/nodeName","value":"%s"}
+		]`, owningResource, ipAddress, nodeName)
+	} else {
+		// If labels exist, use replace operation
+		patch = fmt.Sprintf(`[
+			{"op":"replace","path":"/metadata/labels/environment","value":"production"},
+			{"op":"replace","path":"/metadata/labels/owningResource","value":"%s"},
+			{"op":"replace","path":"/metadata/labels/ipAddress","value":"%s"},
+			{"op":"replace","path":"/metadata/labels/nodeName","value":"%s"}
+		]`, owningResource, ipAddress, nodeName)
+	}
 
 	// Create admission response
 	response := admissionv1.AdmissionResponse{

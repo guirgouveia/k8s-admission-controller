@@ -21,3 +21,16 @@ webhooks:
     admissionReviewVersions:
       - "v1"
     failurePolicy: Fail
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values: ["kube-system", "cert-manager"]
+    objectSelector:
+      matchExpressions:
+        - key: "environment"
+          operator: "NotIn"
+          values: ["production"]
+        - key: app
+          operator: NotIn
+          values: ["mutating-replicant"]
