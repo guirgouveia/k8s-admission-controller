@@ -18,10 +18,6 @@ spec:
         - image: jumads/admission-controller:v7
           name: mutating-replicant 
           imagePullPolicy: Always
-          args:
-            - --port=8443
-            - --tls-crt=/certs/tls.crt
-            - --tls-key=/certs/tls.key
           ports:
             - containerPort: 8443
               name: webhook
