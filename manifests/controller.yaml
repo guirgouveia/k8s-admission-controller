@@ -15,7 +15,7 @@ spec:
         app: mutating-replicant
     spec:
       containers:
-        - image: jumads/admission-controller:v7
+        - image: jumads/admission-controller
           name: mutating-replicant 
           imagePullPolicy: Always
           ports:

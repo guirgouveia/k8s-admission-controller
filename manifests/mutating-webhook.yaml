@@ -6,6 +6,7 @@ metadata:
     cert-manager.io/inject-ca-from: default/admission-webhook-cert
 webhooks:
   - name: mutating-replicant.default.svc
+    matchPolicy: Equivalent
     clientConfig:
       service:
         namespace: default
@@ -14,9 +15,9 @@ webhooks:
     rules:
       - apiGroups: [""]
         apiVersions: ["v1"]
-        operations: ["CREATE"]
+        operations: ["CREATE", "UPDATE"]
         resources: ["pods"]
-        scope: Namespaced
+        scope: "*"
     sideEffects: None
     admissionReviewVersions:
       - "v1"
@@ -34,3 +35,4 @@ webhooks:
         - key: app
           operator: NotIn
           values: ["mutating-replicant"]
+    timeoutSeconds: 10

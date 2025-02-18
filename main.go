@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -63,9 +64,9 @@ func main() {
 		Addr:              port,
 		Handler:           mux,
 		ReadHeaderTimeout: 10 * time.Second,
-		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      30 * time.Second,
-		IdleTimeout:       60 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       10 * time.Second,
 	}
 
 	if err := server.ListenAndServeTLS(certDir+"tls.crt", certDir+"tls.key"); err != nil {
@@ -134,6 +135,43 @@ func writeError(w http.ResponseWriter, message string, code int) {
 		"time":    time.Now().Format(time.RFC3339Nano),
 	}).Error("Admission controller error")
 	http.Error(w, message, code)
+}
+
+// createPatch generates a JSON patch for updating pod labels
+func createPatch(pod *corev1.Pod, labels map[string]string, logger *log.Entry) string {
+	var operations []string
+
+	// Ensure labels map exists
+	if pod.Labels == nil {
+		operations = append(operations, `{"op":"add","path":"/metadata/labels","value":{}}`)
+	}
+
+	// Helper function to add or replace label
+	addOrReplaceLabel := func(name, value string) {
+		if pod.Labels != nil {
+			if _, exists := pod.Labels[name]; exists {
+				// Label exists, replace it
+				operations = append(operations, fmt.Sprintf(`{"op":"replace","path":"/metadata/labels/%s","value":"%s"}`, name, value))
+			} else {
+				// Label doesn't exist, add it
+				operations = append(operations, fmt.Sprintf(`{"op":"add","path":"/metadata/labels/%s","value":"%s"}`, name, value))
+			}
+		} else {
+			// No labels map, just add the label
+			operations = append(operations, fmt.Sprintf(`{"op":"add","path":"/metadata/labels/%s","value":"%s"}`, name, value))
+		}
+	}
+
+	// Iterate over labels and add/replace each one
+	for name, value := range labels {
+		addOrReplaceLabel(name, value)
+	}
+
+	// Create the final patch
+	patch := fmt.Sprintf("[%s]", strings.Join(operations, ","))
+
+	logger.WithField("patch", patch).Debug("Generated JSON patch")
+	return patch
 }
 
 func handleMutation(w http.ResponseWriter, r *http.Request) {
@@ -212,26 +250,16 @@ func handleMutation(w http.ResponseWriter, r *http.Request) {
 		"nodeName":       nodeName,
 	})
 
-	// Create JSON patch for labels
-	var patch string
-	if pod.Labels == nil {
-		// If no labels exist, create the labels map first
-		patch = fmt.Sprintf(`[
-			{"op":"add","path":"/metadata/labels","value":{}},
-			{"op":"add","path":"/metadata/labels/environment","value":"production"},
-			{"op":"add","path":"/metadata/labels/owningResource","value":"%s"},
-			{"op":"add","path":"/metadata/labels/ipAddress","value":"%s"},
-			{"op":"add","path":"/metadata/labels/nodeName","value":"%s"}
-		]`, owningResource, ipAddress, nodeName)
-	} else {
-		// If labels exist, use replace operation
-		patch = fmt.Sprintf(`[
-			{"op":"replace","path":"/metadata/labels/environment","value":"production"},
-			{"op":"replace","path":"/metadata/labels/owningResource","value":"%s"},
-			{"op":"replace","path":"/metadata/labels/ipAddress","value":"%s"},
-			{"op":"replace","path":"/metadata/labels/nodeName","value":"%s"}
-		]`, owningResource, ipAddress, nodeName)
+	// Define the labels to be added/replaced
+	labels := map[string]string{
+		"environment":    "production",
+		"owningResource": owningResource,
+		"ipAddress":      ipAddress,
+		"nodeName":       nodeName,
 	}
+
+	// Generate the patch
+	patch := createPatch(pod, labels, logger)
 
 	// Create admission response
 	response := admissionv1.AdmissionResponse{

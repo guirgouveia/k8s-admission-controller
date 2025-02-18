@@ -16,13 +16,13 @@ spec:
   renewBefore: 720h # 30 days
   subject:
     organizations:
-      - Your organization
-  commonName: mutating-replicant.default.svc  # Changed to match service name
+      - Juma
+  commonName: mutating-replicant.default.svc  
   dnsNames:
     - mutating-replicant
     - mutating-replicant.default
     - mutating-replicant.default.svc
-    - mutating-replicant.default.svc.cluster.local  # All names match the service
+    - mutating-replicant.default.svc.cluster.local
   issuerRef:
     name: selfsigned-issuer
     kind: ClusterIssuer
