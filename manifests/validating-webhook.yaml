@@ -1,21 +1,20 @@
-kind: MutatingWebhookConfiguration
 apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
 metadata:
-  name: mutate-pods
+  name: pod-validator
   annotations:
     cert-manager.io/inject-ca-from: default/admission-webhook-cert
 webhooks:
-  - name: pod-admission-controller.default.svc
+  - name: pod-validator.default.svc
     matchPolicy: Equivalent
     timeoutSeconds: 5
-    reinvocationPolicy: IfNeeded
     failurePolicy: Fail
     sideEffects: None
     clientConfig:
       service:
         namespace: default
         name: pod-admission-controller
-        path: /mutate
+        path: /validate
     rules:
       - apiGroups: [""]
         apiVersions: ["v1"]
@@ -31,9 +30,6 @@ webhooks:
           values: ["kube-system", "cert-manager"]
     objectSelector:
       matchExpressions:
-        - key: "environment"
-          operator: "NotIn"
-          values: ["production"]
         - key: app
           operator: NotIn
-          values: ["pod-admission-controller"]
+          values: ["pod-admission-controller"] 

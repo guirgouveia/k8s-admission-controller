@@ -2,21 +2,21 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: mutating-replicant
-  name: mutating-replicant 
+    app: pod-admission-controller
+  name: pod-admission-controller 
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: mutating-replicant
+      app: pod-admission-controller
   template:
     metadata:
       labels:
-        app: mutating-replicant
+        app: pod-admission-controller
     spec:
       containers:
         - image: jumads/admission-controller
-          name: mutating-replicant 
+          name: pod-admission-controller 
           imagePullPolicy: Always
           ports:
             - containerPort: 8443
@@ -40,14 +40,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: mutating-replicant 
+  name: pod-admission-controller 
   namespace: default
 spec:
   selector:
-    app: mutating-replicant 
+    app: pod-admission-controller 
   type: ClusterIP
   ports:
-  - name: mutating-replicant 
+  - name: pod-admission-controller 
     protocol: TCP
     port: 443
     targetPort: 8443

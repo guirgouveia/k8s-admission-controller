@@ -1,0 +1,63 @@
+# Note: This is a future/conceptual example
+apiVersion: admissionregistration.k8s.io/v1alpha1
+kind: MutatingAdmissionPolicy
+metadata:
+  name: pod-labels-mutation-policy
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [""]
+      apiVersions: ["v1"]
+      operations: ["CREATE", "UPDATE"]
+      resources: ["pods"]
+  mutations:
+    # Environment label
+    - conditions:
+      - expression: "!has(object.metadata.labels) || !has(object.metadata.labels.environment)"
+      patch:
+        - op: "add"
+          path: "/metadata/labels/environment"
+          value: "production"
+    
+    # OwningResource label
+    - conditions:
+      - expression: "!has(object.metadata.labels.owningResource)"
+      patch:
+        - op: "add"
+          path: "/metadata/labels/owningResource"
+          value: "object.metadata.ownerReferences[0].kind || 'None'"
+    
+    # IP Address label - update when IP changes
+    - conditions:
+      - expression: "!has(object.metadata.labels.ipAddress) || (object.status.podIP != '' && object.metadata.labels.ipAddress != object.status.podIP)"
+      patch:
+        - op: "add"
+          path: "/metadata/labels/ipAddress"
+          value: "object.status.podIP || 'pending'"
+    
+    # Node Name label - update when node assignment changes
+    - conditions:
+      - expression: "!has(object.metadata.labels.nodeName) || (object.spec.nodeName != '' && object.metadata.labels.nodeName != object.spec.nodeName)"
+      patch:
+        - op: "add"
+          path: "/metadata/labels/nodeName"
+          value: "object.spec.nodeName || 'pending'"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingAdmissionPolicyBinding
+metadata:
+  name: pod-labels-mutation-policy-binding
+spec:
+  policyName: pod-labels-mutation-policy
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: NotIn
+        values: ["kube-system", "cert-manager"]
+    objectSelector:
+      matchExpressions:
+      - key: app
+        operator: NotIn
+        values: ["pod-admission-controller"] 

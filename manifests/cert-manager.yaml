@@ -17,12 +17,12 @@ spec:
   subject:
     organizations:
       - Juma
-  commonName: mutating-replicant.default.svc  
+  commonName: pod-admission-controller.default.svc  
   dnsNames:
-    - mutating-replicant
-    - mutating-replicant.default
-    - mutating-replicant.default.svc
-    - mutating-replicant.default.svc.cluster.local
+    - pod-admission-controller
+    - pod-admission-controller.default
+    - pod-admission-controller.default.svc
+    - pod-admission-controller.default.svc.cluster.local
   issuerRef:
     name: selfsigned-issuer
     kind: ClusterIssuer

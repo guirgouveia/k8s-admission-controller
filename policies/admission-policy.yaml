@@ -1,0 +1,42 @@
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: pod-labels-policy
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [""]
+      apiVersions: ["v1"]
+      operations: ["CREATE", "UPDATE"]
+      resources: ["pods"]
+  validations:
+    - expression: "object.metadata.labels != null"
+      message: "Pod must have labels"
+    - expression: "has(object.metadata.labels.environment) && object.metadata.labels.environment == 'production'"
+      message: "Pod must have environment=production label"
+    - expression: "has(object.metadata.labels.owningResource)"
+      message: "Pod must have owningResource label"
+    - expression: "has(object.metadata.labels.ipAddress)"
+      message: "Pod must have ipAddress label"
+    - expression: "has(object.metadata.labels.nodeName)"
+      message: "Pod must have nodeName label"
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: pod-labels-policy-binding
+spec:
+  policyName: pod-labels-policy
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: NotIn
+        values: ["kube-system", "cert-manager"]
+    objectSelector:
+      matchExpressions:
+      - key: app
+        operator: NotIn
+        values: ["pod-admission-controller"] 
