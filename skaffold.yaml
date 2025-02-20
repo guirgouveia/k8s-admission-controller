@@ -1,0 +1,23 @@
+apiVersion: skaffold/v2beta29
+kind: Config
+metadata:
+  name: admission-controller
+build:
+  artifacts:
+    - image: jumads/admission-controller
+      context: .
+      docker:
+        noCache: true
+        dockerfile: Dockerfile
+  local:
+    push: true
+    useDockerCLI: false
+    useBuildkit: false
+  tagPolicy:
+    gitCommit:
+      prefix: local
+deploy:
+  kubeContext: docker-desktop
+  kubectl:
+    manifests:
+      - manifests/*
