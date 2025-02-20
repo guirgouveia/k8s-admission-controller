@@ -1,14 +1,15 @@
+---
 kind: MutatingWebhookConfiguration
 apiVersion: admissionregistration.k8s.io/v1
 metadata:
-  name: mutate-pods
+  name: pod-creation-webhook
   annotations:
     cert-manager.io/inject-ca-from: default/admission-webhook-cert
 webhooks:
   - name: pod-admission-controller.default.svc
     matchPolicy: Equivalent
     timeoutSeconds: 5
-    reinvocationPolicy: IfNeeded
+    reinvocationPolicy: Never
     failurePolicy: Fail
     sideEffects: None
     clientConfig:
@@ -19,7 +20,7 @@ webhooks:
     rules:
       - apiGroups: [""]
         apiVersions: ["v1"]
-        operations: ["CREATE", "UPDATE"]
+        operations: ["CREATE"]
         resources: ["pods"]
         scope: "*"
     admissionReviewVersions:
@@ -31,9 +32,43 @@ webhooks:
           values: ["kube-system", "cert-manager"]
     objectSelector:
       matchExpressions:
-        - key: "environment"
-          operator: "NotIn"
-          values: ["production"]
+        - key: app
+          operator: NotIn
+          values: ["pod-admission-controller"]
+---
+kind: MutatingWebhookConfiguration
+apiVersion: admissionregistration.k8s.io/v1
+metadata:
+  name: pods-status-update-webhook
+  annotations:
+    cert-manager.io/inject-ca-from: default/admission-webhook-cert
+webhooks:
+  - name: pod-admission-controller-status.default.svc
+    matchPolicy: Equivalent
+    timeoutSeconds: 5
+    reinvocationPolicy: Never
+    failurePolicy: Fail
+    sideEffects: None
+    clientConfig:
+      service:
+        namespace: default
+        name: pod-admission-controller
+        path: /status
+    rules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["UPDATE"]
+        resources: ["pods/status"]
+        scope: "*"
+    admissionReviewVersions:
+      - "v1"
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values: ["kube-system", "cert-manager"]
+    objectSelector:
+      matchExpressions:
         - key: app
           operator: NotIn
           values: ["pod-admission-controller"]

@@ -14,6 +14,8 @@ spec:
       labels:
         app: pod-admission-controller
     spec:
+      tolerations:
+      - operator: "Exists"
       containers:
         - image: jumads/admission-controller
           name: pod-admission-controller 
