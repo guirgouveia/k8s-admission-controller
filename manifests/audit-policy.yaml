@@ -1,3 +1,5 @@
+# Ensure that the audit policy is enabled in the cluster
+#---
 # apiVersion: audit.k8s.io/v1
 # kind: Policy
 # rules:

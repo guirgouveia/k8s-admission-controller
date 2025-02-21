@@ -7,7 +7,7 @@ build:
     - image: jumads/admission-controller
       context: .
       docker:
-        noCache: true
+        noCache: true # Disable cache for the build to ensure the latest script code is used for the entrypoint
         dockerfile: Dockerfile
   local:
     push: true

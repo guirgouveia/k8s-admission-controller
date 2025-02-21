@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -61,10 +62,11 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/mutate", handlePodCreation)
-	mux.HandleFunc("/status", handleStatusUpdate)
 	mux.HandleFunc("/validate", handleValidation)
 	mux.HandleFunc("/validate-pod-status", handlePodStatusChangeValidation)
 	mux.HandleFunc("/healthz", handleHealth)
+	mux.HandleFunc("/readyz", handleHealth)
+	mux.HandleFunc("/livez", handleHealth)
 
 	server := &http.Server{
 		Addr:              port,
@@ -94,7 +96,7 @@ func handlePodStatusChangeValidation(w http.ResponseWriter, r *http.Request) {
 			logger.WithField("panic", r).Error("Recovered from panic in mutation handler")
 			writeError(w, "Internal server error", http.StatusInternalServerError)
 		}
-		logger.WithField("duration", time.Since(startTime).String()).Info("Successfully processed status update request.")
+		logger.WithField("duration", time.Since(startTime).String()).Info("Successfully validated status update request.")
 	}()
 
 	if r.Method != http.MethodPost {
@@ -237,136 +239,55 @@ func updatePodLabels(pod *corev1.Pod) error {
 
 	return nil
 }
-
-func handleStatusUpdate(w http.ResponseWriter, r *http.Request) {
-	startTime := time.Now()
-	logger := log.WithFields(log.Fields{
-		"method":    r.Method,
-		"path":      r.URL.Path,
-		"remoteIP":  r.RemoteAddr,
-		"userAgent": r.UserAgent(),
-	})
-
-	defer func() {
-		if r := recover(); r != nil {
-			logger.WithField("panic", r).Error("Recovered from panic in mutation handler")
-			writeError(w, "Internal server error", http.StatusInternalServerError)
-		}
-		logger.WithField("duration", time.Since(startTime).String()).Info("Successfully processed status update request.")
-	}()
-
-	if r.Method != http.MethodPost {
-		writeError(w, "Only POST requests are allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	if r.Header.Get("Content-Type") != "application/json" {
-		writeError(w, "Invalid content type, expecting application/json", http.StatusUnsupportedMediaType)
-		return
-	}
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		writeError(w, fmt.Sprintf("Failed to read request body: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	log.Info("Processing status update request.")
-
-	review, pod, err := parseAdmissionReview(body)
-	if err != nil {
-		writeError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// Determine owning resource type
-	owningResource := "None"
-	if len(pod.OwnerReferences) > 0 {
-		owningResource = pod.OwnerReferences[0].Kind
-	}
-
-	// Get IP address and node name
-	ipAddress := pod.Status.PodIP
-	nodeName := pod.Spec.NodeName
-
-	if len(ipAddress) == 0 {
-		ipAddress = "pending"
-	}
-
-	if len(nodeName) == 0 {
-		nodeName = "pending"
-	}
-
-	logger = logger.WithFields(log.Fields{
-		"environment":    "production",
-		"owningResource": owningResource,
-		"ipAddress":      ipAddress,
-		"nodeName":       nodeName,
-	})
-
-	// Define the labels to be added/replaced
-	labels := map[string]string{
-		"ipAddress": pod.Status.PodIP,
-		"nodeName":  pod.Spec.NodeName,
-	}
-
-	// Generate the patch
-	patch := createPatch(pod, labels, logger)
-
-	// Create admission response
-	response := admissionv1.AdmissionResponse{
-		UID:     review.Request.UID,
-		Allowed: true,
-		Patch:   []byte(patch),
-		PatchType: func() *admissionv1.PatchType {
-			t := admissionv1.PatchTypeJSONPatch
-			return &t
-		}(),
-	}
-
-	// Send response
-	reviewResponse := admissionv1.AdmissionReview{
-		TypeMeta: review.TypeMeta,
-		Response: &response,
-	}
-
-	respBytes, err := json.Marshal(reviewResponse)
-	if err != nil {
-		writeError(w, fmt.Sprintf("Failed to encode response: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if _, err := w.Write(respBytes); err != nil {
-		logger.WithError(err).Error("Failed to write response")
-	}
-}
-
 func handleHealth(w http.ResponseWriter, r *http.Request) {
+	urlPath := r.URL.Path
 	logger := log.WithFields(log.Fields{
 		"method": r.Method,
-		"path":   r.URL.Path,
+		"path":   urlPath,
 	})
-	logger.Info("Health check request received")
 
-	// Verify TLS cert exists
-	if _, err := os.Stat(certDir + "tls.crt"); err != nil {
-		msg := "TLS certificate not found"
-		logger.WithError(err).Error(msg)
-		http.Error(w, msg, http.StatusInternalServerError)
-		return
+	// Determine if this is a liveness or readiness probe
+	probeType := "health"
+	if urlPath == "/readyz" {
+		probeType = "readiness"
+	} else if urlPath == "/livez" {
+		probeType = "liveness"
 	}
 
-	if _, err := os.Stat(certDir + "tls.key"); err != nil {
-		msg := "TLS key not found"
-		logger.WithError(err).Error(msg)
-		http.Error(w, msg, http.StatusInternalServerError)
-		return
+	logger.WithField("probeType", probeType).Info("Health check request received")
+
+	// For readiness check, verify we can process requests
+	if probeType == "readiness" || probeType == "health" {
+		// Check if server is accepting connections
+		_, err := net.DialTimeout("tcp", port, 1*time.Second)
+		if err != nil {
+			logger.WithError(err).Error("Readiness probe failed: cannot accept connections")
+			http.Error(w, "Not ready", http.StatusServiceUnavailable)
+			return
+		}
+	}
+
+	// For liveness check, verify critical components
+	if probeType == "liveness" || probeType == "health" {
+		// Verify TLS files exist
+		if _, err := os.Stat(certDir + "tls.crt"); err != nil {
+			msg := "TLS certificate not found"
+			logger.WithError(err).Error(msg)
+			http.Error(w, msg, http.StatusInternalServerError)
+			return
+		}
+
+		if _, err := os.Stat(certDir + "tls.key"); err != nil {
+			msg := "TLS key not found"
+			logger.WithError(err).Error(msg)
+			http.Error(w, msg, http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
-	logger.Info("Health check request completed successfully")
+	logger.Info("Health check completed successfully")
 }
 
 func parseAdmissionReview(body []byte) (*admissionv1.AdmissionReview, *corev1.Pod, error) {

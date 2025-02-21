@@ -1,19 +1,27 @@
-# 🚀 Kubernetes Admission Controller - Label Mutating Webhook
+# 🚀 Kubernetes Resource Mutation Strategies
 
-A Kubernetes **Mutating Admission Webhook** that automatically adds standardized labels to newly created pods, improving cluster organization and resource tracking.
+This repository explores different approaches to mutating Kubernetes resources, including:
+
+1. **Mutating Admission Webhook**: Automatically adds standardized labels to newly created pods
+2. **Operator Pattern**: Uses Operator SDK to build a controller that manages pod labels
+3. **MutatingWebhookPolicy**: Implements resource mutation through admission policies
+
+> **Note**: The Operator and MutatingWebhookPolicy implementations are currently under the `development` branch.
 
 ## 📌 What It Does
 
-This admission controller automatically assigns the following labels to every new pod in your cluster:
+These implementations automatically assign the following labels to every new pod in your cluster:
 
-| Label | Description | Example |
-|-------|-------------|---------|
-| `environment` | Identifies the pod's environment | `production` |
-| `owningResource` | Indicates the resource managing the pod | `ReplicaSet`, `StatefulSet`, `Job`, `None` |
-| `ipAddress` | Stores the pod's IP address | Initially `pending`, then actual IP |
-| `nodeName` | Specifies the node hosting the pod | Initially `pending`, then node name |
+| Label          | Description                          | Example         |
+|----------------|--------------------------------------|-----------------|
+| `environment`  | Identifies the pod's environment     | `production`    |
+| `owningResource`| Indicates the resource managing the pod | `ReplicaSet`, `StatefulSet`, `Job`, `None` |
+| `ipAddress`    | Stores the pod's IP address          | Initially `pending`, then actual IP |
+| `nodeName`     | Specifies the node hosting the pod   | Initially `pending`, then node name |
 
 ## 🔍 How It Works
+
+### Mutating Admission Webhook
 
 1. **Pod Creation Request**: When a pod creation request is made to the Kubernetes API server
 2. **Webhook Invocation**: The API server forwards the request to our webhook
@@ -24,104 +32,119 @@ This admission controller automatically assigns the following labels to every ne
    - Creates JSON patch for missing labels
 4. **Pod Creation**: API server applies the patch and creates the pod
 
+### Operator Pattern
+
+1. **Pod Creation**: Pod is created without labels
+2. **Controller Watch**: Operator detects new pod
+3. **Label Reconciliation**:
+   - Adds missing labels
+   - Updates labels as pod status changes
+4. **Continuous Monitoring**: Operator maintains labels throughout pod lifecycle
+
 ## 📁 Project Structure
 
+The repository is organized as follows:
+
 ```
-.
-├── Dockerfile                # Container image definition
-├── main.go                   # Webhook implementation
-├── go.mod                    # Go module file
-├── README.md                # Documentation
-└── manifests/               # Kubernetes manifests
-    ├── cert-manager.yaml     # Certificate configuration
-    ├── controller.yaml       # Webhook deployment
-    ├── mutating-webhook.yaml # Webhook configuration
-    └── pod.yaml             # Test pod manifest
-```
-
-## 🔧 Prerequisites
-
-- Kubernetes cluster (v1.16+)
-- kubectl configured
-- cert-manager installed
-- Docker for building images
-
-## 📦 Installation
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/yourusername/k8s-admission-controller.git
-cd k8s-admission-controller
-```
-
-### 2. Build and Push the Docker Image
-```bash
-# Build the image
-docker build -t jumads/admission-controller:latest .
-
-# Push to registry
-docker push jumads/admission-controller:latest
+k8s-admission-controller/
+├── Dockerfile              # Container image definition
+├── README.md              # Project documentation
+├── go.mod                 # Go module definition
+├── go.sum                 # Go dependencies checksum
+├── main.go                # Main application code
+├── manifests/             # Kubernetes resource definitions
+│   ├── audit-policy.yaml      # Kubernetes audit policy
+│   ├── cert-manager.yaml      # Certificate management
+│   ├── controller.yaml        # Controller configuration
+│   ├── deployment.yaml        # Application deployment
+│   ├── mutating-webhook.yaml  # Webhook configuration
+│   ├── network-policy.yaml    # Network policies
+│   ├── pod.yaml              # Sample pod configuration
+│   ├── rbac.yaml             # RBAC permissions
+│   └── validating-webhook.yaml # Validation webhook
+├── operators/             # Kubernetes operators
+│   └── pod-labels-operator   # Pod labeling operator
+├── policies/             # Admission control policies
+│   ├── admission-policy.yaml # General admission rules
+│   └── mutation-policy.yaml  # Mutation rules
+└── skaffold.yaml         # Skaffold CI/CD configuration
 ```
 
-### 3. Deploy to Kubernetes
+## 🚀 Getting Started
 
-```bash
-# Install cert-manager (if not already installed)
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.12.0/cert-manager.yaml
+To deploy the Mutating Admission Webhook in your Kubernetes cluster, follow these steps:
 
-# Wait for cert-manager to be ready
-kubectl wait --for=condition=ready pod -l app=cert-manager -n cert-manager
+### Prerequisites
 
-# Deploy the webhook
-kubectl apply -f manifests/cert-manager.yaml
-kubectl apply -f manifests/controller.yaml
-kubectl apply -f manifests/mutating-webhook.yaml
-```
+- Kubernetes cluster (v1.16 or later. )
+- `kubectl` configured to interact with your cluster
+- Docker (for building the controller image)
 
-## 🧪 Testing
+>
+> _To utilize the new MutatingAdmissionPolicy, which simplifies the admission processes a lot, instead of the MutatingAdmissionConfiguration ensure your Kubernetes cluster is running version 1.32 or newer._ 
+>
 
-### Create a Test Pod
-```bash
-# Apply the test pod
-kubectl apply -f manifests/pod.yaml
+### Steps
 
-# Check the labels
-kubectl get pod test-pod --show-labels
-```
+1. **Clone the Repository**
 
-Expected output:
-```
-NAME       READY   STATUS    RESTARTS   AGE   LABELS
-test-pod   1/1     Running   0          1m    environment=production,owningResource=None,ipAddress=10.244.0.15,nodeName=worker-1
-```
+    ```sh
+    git clone https://github.com/guirgouveia/k8s-admission-controller.git
+    cd k8s-admission-controller
+    ```
 
-## 🔒 Security Features
+2. **Build and Push the Docker Image**
 
-- **TLS Encryption**: Secure webhook communication
-- **Certificate Management**: Automated by cert-manager
-- **Namespace Filtering**: Excludes system namespaces
-- **Failure Policy**: Fails closed for security
-- **Resource Limits**: Prevents resource exhaustion
+    Build the Docker image for the admission controller:
 
-## 🚀 Development
+    ```sh
+    docker build -t your-registry/k8s-admission-controller:latest .
+    ```
 
-### Adding New Labels
-```go
-// In main.go
-labels := map[string]string{
-    "environment":    "production",
-    "owningResource": owningResource,
-    "ipAddress":      ipAddress,
-    "nodeName":       nodeName,
-    // Add new labels here
-}
-```
+    Push the image to your container registry:
 
-### Local Testing
-```bash
-# Build
-go build -o admission-controller
+    ```sh
+    docker push your-registry/k8s-admission-controller:latest
+    ```
 
-# Test
-go test ./...
-```
+    Replace `your-registry` with the appropriate registry URL.
+
+3. **Deploy the Admission Controller**
+
+    Update the image field in `kubernetes/deployment.yaml` to reference your Docker image.
+
+    Apply the Kubernetes manifests:
+
+    ```sh
+    kubectl apply -f kubernetes/service.yaml
+    kubectl apply -f kubernetes/deployment.yaml
+    kubectl apply -f kubernetes/webhook-config.yaml
+    ```
+
+4. **Verify the Deployment**
+
+    Ensure the admission controller pod is running:
+
+    ```sh
+    kubectl get pods -l app=k8s-admission-controller
+    ```
+
+    Check for the `Running` status.
+
+## 🛠️ Development
+
+To contribute or modify the admission controller:
+
+1. Make your code changes in `main.go`.
+2. Rebuild and push the Docker image.
+3. Update the deployment in your cluster:
+
+    ```sh
+    kubectl rollout restart deployment k8s-admission-controller
+    ```
+
+## 📄 License
+
+This project is licensed under the MIT License. See the LICENSE file for details.
+
+For more information on Kubernetes admission controllers, refer to the [official documentation](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/).
