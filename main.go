@@ -65,8 +65,7 @@ func main() {
 
 	// Create HTTP server
 	mux := http.NewServeMux()
-	mux.HandleFunc("/mutate", handlePodCreation)
-	mux.HandleFunc("/validate", handleValidation)
+	mux.HandleFunc("/mutate-pod-creation", handlePodCreation)
 	mux.HandleFunc("/validate-pod-status", handlePodStatusChangeValidation)
 	mux.HandleFunc("/healthz", handleHealth)
 	mux.HandleFunc("/readyz", handleHealth)
@@ -493,49 +492,4 @@ func handlePodCreation(w http.ResponseWriter, r *http.Request) {
 		writeError(w, fmt.Sprintf("Failed to write response: %v", err), http.StatusInternalServerError)
 		return
 	}
-}
-
-func handleValidation(w http.ResponseWriter, r *http.Request) {
-	logger := log.WithFields(log.Fields{
-		"method":    r.Method,
-		"path":      r.URL.Path,
-		"remoteIP":  r.RemoteAddr,
-		"userAgent": r.UserAgent(),
-	})
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		writeError(w, fmt.Sprintf("Failed to read request body: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	review, pod, err := parseAdmissionReview(body)
-	if err != nil {
-		writeError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	logger = logger.WithFields(log.Fields{
-		"uid":       review.Request.UID,
-		"namespace": pod.Namespace,
-		"name":      pod.Name,
-	})
-
-	response := admissionv1.AdmissionResponse{
-		UID:     review.Request.UID,
-		Allowed: true,
-	}
-	reviewResponse := admissionv1.AdmissionReview{
-		TypeMeta: review.TypeMeta,
-		Response: &response,
-	}
-	respBytes, err := json.Marshal(reviewResponse)
-	if err != nil {
-		writeError(w, fmt.Sprintf("Failed to encode response: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(respBytes)
-	logger.Info("Successfully proccessed validation request.")
 }
