@@ -22,6 +22,9 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+var buildTime string
+var gitCommit string
+
 var (
 	scheme  = runtime.NewScheme()
 	codecs  = serializer.NewCodecFactory(scheme)
@@ -58,8 +61,9 @@ func main() {
 		"certPath": certDir + "tls.crt",
 		"keyPath":  certDir + "tls.key",
 		"logLevel": log.GetLevel().String(),
-	}).Info("Starting Admission Controller")
+	}).Info(fmt.Sprintf("Starting Admission Controller: version %s, build time %s", gitCommit, buildTime))
 
+	// Create HTTP server
 	mux := http.NewServeMux()
 	mux.HandleFunc("/mutate", handlePodCreation)
 	mux.HandleFunc("/validate", handleValidation)

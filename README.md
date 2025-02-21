@@ -131,7 +131,33 @@ To deploy the Mutating Admission Webhook in your Kubernetes cluster, follow thes
 
     Check for the `Running` status.
 
+See [Skaffold Section](#local-development-with-skaffold) below for local development instructions.
+
 ## 🛠️ Development
+
+### Local Development with Skaffold
+
+For a smoother development experience, this project uses Skaffold for local CI/CD. Start the development environment with:
+
+```sh
+skaffold dev --keep-running-on-failure=true
+```
+
+This command:
+- Watches for file changes
+- Rebuilds the container image
+- Updates the Kubernetes deployment
+- Keeps pods running even if they crash (useful for debugging)
+- Shows real-time logs from all pods
+
+To temporarily disable auto-rebuilds while debugging:
+
+```sh
+# Press Ctrl+Z to pause
+# Press Ctrl+Z again to resume
+```
+
+### Manual Deployment
 
 To contribute or modify the admission controller:
 
@@ -142,9 +168,3 @@ To contribute or modify the admission controller:
     ```sh
     kubectl rollout restart deployment k8s-admission-controller
     ```
-
-## 📄 License
-
-This project is licensed under the MIT License. See the LICENSE file for details.
-
-For more information on Kubernetes admission controllers, refer to the [official documentation](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/).
