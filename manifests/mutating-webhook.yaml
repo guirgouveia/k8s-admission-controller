@@ -6,7 +6,7 @@ metadata:
   annotations:
     cert-manager.io/inject-ca-from: default/admission-webhook-cert
 webhooks:
-  - name: pod-admission-controller.default.svc
+  - name: pod-creation-webhook.default.svc.cluster.local
     matchPolicy: Equivalent
     timeoutSeconds: 5
     reinvocationPolicy: Never
@@ -29,46 +29,46 @@ webhooks:
       matchExpressions:
         - key: kubernetes.io/metadata.name
           operator: NotIn
-          values: ["kube-system", "cert-manager"]
+          values: ["kube-system", "cert-manager", "pod-labels-operator-system"]
     objectSelector:
       matchExpressions:
         - key: app
           operator: NotIn
           values: ["pod-admission-controller"]
----
-kind: MutatingWebhookConfiguration
-apiVersion: admissionregistration.k8s.io/v1
-metadata:
-  name: pods-status-update-webhook
-  annotations:
-    cert-manager.io/inject-ca-from: default/admission-webhook-cert
-webhooks:
-  - name: pod-admission-controller-status.default.svc
-    matchPolicy: Equivalent
-    timeoutSeconds: 5
-    reinvocationPolicy: Never
-    failurePolicy: Fail
-    sideEffects: None
-    clientConfig:
-      service:
-        namespace: default
-        name: pod-admission-controller
-        path: /status
-    rules:
-      - apiGroups: [""]
-        apiVersions: ["v1"]
-        operations: ["UPDATE"]
-        resources: ["pods/status"]
-        scope: "*"
-    admissionReviewVersions:
-      - "v1"
-    namespaceSelector:
-      matchExpressions:
-        - key: kubernetes.io/metadata.name
-          operator: NotIn
-          values: ["kube-system", "cert-manager"]
-    objectSelector:
-      matchExpressions:
-        - key: app
-          operator: NotIn
-          values: ["pod-admission-controller"]
+# ---
+# kind: MutatingWebhookConfiguration
+# apiVersion: admissionregistration.k8s.io/v1
+# metadata:
+#   name: pods-status-update-webhook
+#   annotations:
+#     cert-manager.io/inject-ca-from: default/admission-webhook-cert
+# webhooks:
+#   - name: pods-status-update-webhook.default.svc.cluster.local
+#     matchPolicy: Equivalent
+#     timeoutSeconds: 2
+#     reinvocationPolicy: IfNeeded
+#     failurePolicy: Ignore
+#     sideEffects: None
+#     clientConfig:
+#       service:
+#         namespace: default
+#         name: pod-admission-controller
+#         path: /status
+#     rules:
+#       - apiGroups: [""]
+#         apiVersions: ["v1"]
+#         operations: ["UPDATE"]
+#         resources: ["pods/status"]
+#         scope: "*"
+#     admissionReviewVersions:
+#       - "v1"
+#     namespaceSelector:
+#       matchExpressions:
+#         - key: kubernetes.io/metadata.name
+#           operator: NotIn
+#           values: ["kube-system", "cert-manager"]
+#     objectSelector:
+#       matchExpressions:
+#         - key: app
+#           operator: NotIn
+#           values: ["pod-admission-controller"]

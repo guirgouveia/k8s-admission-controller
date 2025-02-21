@@ -1,11 +1,11 @@
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
-  name: pod-validator
+  name: pod-status-validator
   annotations:
     cert-manager.io/inject-ca-from: default/admission-webhook-cert
 webhooks:
-  - name: pod-validator.default.svc
+  - name: pod-status-validator.default.svc.cluster.local
     matchPolicy: Equivalent
     timeoutSeconds: 5
     failurePolicy: Fail
@@ -14,12 +14,12 @@ webhooks:
       service:
         namespace: default
         name: pod-admission-controller
-        path: /validate
+        path: /validate-pod-status
     rules:
       - apiGroups: [""]
         apiVersions: ["v1"]
-        operations: ["CREATE", "UPDATE"]
-        resources: ["pods"]
+        operations: ["UPDATE"]
+        resources: ["pods/status"]
         scope: "*"
     admissionReviewVersions:
       - "v1"
@@ -27,9 +27,12 @@ webhooks:
       matchExpressions:
         - key: kubernetes.io/metadata.name
           operator: NotIn
-          values: ["kube-system", "cert-manager"]
+          values: ["kube-system", "cert-manager", "pod-labels-operator-system"]
     objectSelector:
       matchExpressions:
+        - key: missingLabelsValues
+          operator: In
+          values: ["true"]
         - key: app
           operator: NotIn
           values: ["pod-admission-controller"] 

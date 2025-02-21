@@ -12,7 +12,7 @@ build:
   local:
     push: true
     useDockerCLI: false
-    useBuildkit: false
+    useBuildkit: true
   tagPolicy:
     gitCommit:
       prefix: local
@@ -21,3 +21,7 @@ deploy:
   kubectl:
     manifests:
       - manifests/*
+    # flags:
+    #   apply:
+    #     - --prune
+    #     - --all=true
