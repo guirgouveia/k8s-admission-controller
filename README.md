@@ -41,6 +41,56 @@ These implementations automatically assign the following labels to every new pod
    - Updates labels as pod status changes
 4. **Continuous Monitoring**: Operator maintains labels throughout pod lifecycle
 
+### MutatingWebhookPolicy Implementation
+
+Starting from Kubernetes 1.32+, you can use the new MutatingAdmissionPolicy feature:
+
+1. **Policy Definition**: Define mutation rules declaratively in YAML
+2. **No Webhook Server**: No need to maintain a separate webhook service
+3. **Built-in Validation**: Kubernetes validates policy syntax
+4. **Performance**: Better performance as mutations happen in-process
+
+Example policy:
+```yaml
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingAdmissionPolicy
+metadata:
+  name: add-pod-labels
+spec:
+  failurePolicy: Ignore
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [""]
+      apiVersions: ["v1"]
+      operations: ["CREATE"]
+      resources: ["pods"]
+```
+
+### Operator SDK Implementation
+
+The Operator SDK version provides additional features:
+
+1. **Reconciliation Loop**: Continuously ensures desired state
+2. **Custom Resource Support**: Define PodLabelPolicy CRD
+3. **Controller Runtime**: Built on controller-runtime library
+4. **Metrics**: Built-in prometheus metrics
+5. **Leader Election**: Automatic HA support
+
+
+
+Example Custom Resource:
+```yaml
+apiVersion: labels.example.com/v1alpha1
+kind: PodLabelPolicy
+metadata:
+  name: default-labels
+spec:
+  environment: production
+  labels:
+    team: platform
+    cost-center: platform-engineering
+```
+
 ## 📁 Project Structure
 
 The repository is organized as follows:
@@ -76,15 +126,52 @@ To deploy the Mutating Admission Webhook in your Kubernetes cluster, follow thes
 
 ### Prerequisites
 
-- Kubernetes cluster (v1.16 or later. )
+- Kubernetes cluster (v1.16 or later)
 - `kubectl` configured to interact with your cluster
 - Docker (for building the controller image)
+- Skaffold v2.0.0 or later (for local development)
 
->
-> _To utilize the new MutatingAdmissionPolicy, which simplifies the admission processes a lot, instead of the MutatingAdmissionConfiguration ensure your Kubernetes cluster is running version 1.32 or newer._ 
->
+### Development Workflow
 
-### Steps
+#### Local Development with Skaffold
+
+This project uses Skaffold to streamline the development workflow. Start coding with:
+
+```sh
+ skaffold dev  --keep-running-on-failure=true --tail=false --interactive=false
+```
+
+or leverage the Taskfile for a more streamlined experience:
+
+```sh
+task run
+```
+
+Key features:
+- Hot reload on code changes
+- Real-time log streaming
+- Automatic image builds
+- Fast deployment updates
+- Keep pods alive for debugging
+
+Development commands:
+```sh
+# Start development with debug info
+skaffold dev -v debug --keep-running-on-failure=true
+
+# Run once without watching for changes
+skaffold run
+
+# Debug with port forwarding
+skaffold debug --port-forward
+
+# Clean up all deployed resources
+skaffold delete
+```
+
+#### Manual Deployment
+
+If you prefer not to use Skaffold, follow these steps:
 
 1. **Clone the Repository**
 
@@ -131,31 +218,9 @@ To deploy the Mutating Admission Webhook in your Kubernetes cluster, follow thes
 
     Check for the `Running` status.
 
-See [Skaffold Section](#local-development-with-skaffold) below for local development instructions.
+See [Skaffold Section](#local-development-with-skaffold) above for local development instructions.
 
 ## 🛠️ Development
-
-### Local Development with Skaffold
-
-For a smoother development experience, this project uses Skaffold for local CI/CD. Start the development environment with:
-
-```sh
-skaffold dev --keep-running-on-failure=true
-```
-
-This command:
-- Watches for file changes
-- Rebuilds the container image
-- Updates the Kubernetes deployment
-- Keeps pods running even if they crash (useful for debugging)
-- Shows real-time logs from all pods
-
-To temporarily disable auto-rebuilds while debugging:
-
-```sh
-# Press Ctrl+Z to pause
-# Press Ctrl+Z again to resume
-```
 
 ### Manual Deployment
 

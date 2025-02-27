@@ -1,27 +1,33 @@
-apiVersion: skaffold/v2beta29
+apiVersion: skaffold/v4beta12
 kind: Config
 metadata:
   name: admission-controller
 build:
+  platforms:
+    - linux/amd64
+    - linux/arm64
   artifacts:
     - image: jumads/admission-controller
-      context: .
+      context: k8s-admission-controller
       docker:
-        noCache: true # Disable cache for the build to ensure the latest script code is used for the entrypoint
+        noCache: false
         dockerfile: Dockerfile
+        cacheFrom:
+          - jumads/admission-controller
   local:
     push: true
+    tryImportMissing: true
     useDockerCLI: false
     useBuildkit: true
   tagPolicy:
     gitCommit:
-      prefix: local
+      prefix: local-
+      variant: CommitSha
+      ignoreChanges: true
 deploy:
   kubeContext: docker-desktop
-  kubectl:
-    manifests:
-      - manifests/*
-    # flags:
-    #   apply:
-    #     - --prune
-    #     - --all=true
+manifests:
+  kustomize:
+    paths:
+      - manifests/webhooks
+      - manifests/tests

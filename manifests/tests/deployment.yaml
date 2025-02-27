@@ -1,6 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  annotations:
+    config.kubernetes.io/depends-on: /v1, Kind=MutatingWebhookConfiguration, Name=pod-admission-controller
   name: test-deployment
   namespace: default
 spec:

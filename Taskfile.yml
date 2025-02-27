@@ -1,0 +1,31 @@
+version: "3"
+
+vars:
+  BINARY_NAME: admission-controller
+  DOCKER_IMAGE: k8s-admission-controller
+
+tasks:
+  default:
+    cmds:
+      - task: run
+
+  run:
+    desc: Run Skaffold in development mode
+    cmds:
+      - skaffold dev --keep-running-on-failure=true --tail=false --interactive=false
+
+  build:
+    desc: Build the Go binary
+    cmds:
+      - go build -o {{.BINARY_NAME}} main.go
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -f {{.BINARY_NAME}}
+      - skaffold delete
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test -v ./...

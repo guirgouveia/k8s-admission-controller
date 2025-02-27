@@ -28,6 +28,3 @@ vendor/
 
 # Go workspace file
 go.work
-
-# Go modules
-go.sum

@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+# - audit-policy.yaml # Requires enabling audit logging in the cluster
+- cert-manager.yaml
+- network-policy.yaml
+- controller.yaml
+- rbac.yaml
+- mutating-webhook.yaml
+- validating-webhook.yaml

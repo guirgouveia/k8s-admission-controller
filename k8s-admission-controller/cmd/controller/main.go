@@ -23,7 +23,6 @@ import (
 )
 
 var buildTime string
-var gitCommit string
 
 var (
 	scheme  = runtime.NewScheme()
@@ -61,7 +60,7 @@ func main() {
 		"certPath": certDir + "tls.crt",
 		"keyPath":  certDir + "tls.key",
 		"logLevel": log.GetLevel().String(),
-	}).Info(fmt.Sprintf("Starting Admission Controller: version %s, build time %s", gitCommit, buildTime))
+	}).Info(fmt.Sprintf("Starting Admission Controller: build time %s", buildTime))
 
 	// Create HTTP server
 	mux := http.NewServeMux()
