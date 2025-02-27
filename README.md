@@ -135,7 +135,7 @@ To deploy the Mutating Admission Webhook in your Kubernetes cluster, follow thes
 
 #### Local Development with Skaffold
 
-This project uses Skaffold to streamline the development workflow. It builds and deploys code to Docker Desktop, but you can specify your Kubernetes context in the [skaffold.yaml](./skaffold.yaml) file.
+This project uses Skaffold to streamline the development workflow. It builds and deploys code to Docker Desktop, but you can specify your Kubernetes context in the [skaffold.yaml]([./skaffold.yaml](https://github.com/guirgouveia/k8s-admission-controller/blob/4f2862ff2deb4c2a9e3293f647de37a4cf69ac4c/skaffold.yaml#L28)) file.
 
 Start coding with:
 
